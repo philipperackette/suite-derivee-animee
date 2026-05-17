@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Suite dérivée animée</title>
+<style>
+:root{--bg:#0e1a44;--panel:#fbfaf4;--ink:#171717;--teal:#0f5b55;--garnet:#8a1d2c;--blue:#1d4f91;--gold:#c79b2b;--line:#d8d2c4}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f3f1ea;color:var(--ink)}
+header{background:var(--bg);color:white;padding:18px 24px;border-bottom:5px solid var(--gold)}
+header h1{margin:0;font-size:1.55rem;font-weight:650}header p{margin:.35rem 0 0;opacity:.9}
+main{padding:20px;max-width:1180px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:0 2px 10px #0001}
+.panel h2{margin:.1rem 0 1rem;font-size:1.1rem;color:var(--teal)}
+.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin-bottom:12px}
+.control{display:flex;flex-direction:column;gap:4px}
+label{font-weight:600;font-size:.92rem}
+input,select,button{font:inherit;border:1px solid #bbb;border-radius:8px;padding:7px 9px;background:white}
+button{background:var(--teal);color:white;border-color:var(--teal);cursor:pointer}
+button.secondary{background:white;color:var(--teal)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.note{font-size:.92rem;color:#444;line-height:1.45}
+.small{font-size:.88rem;color:#555}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.result{font-size:1.05rem;line-height:1.5}
+.linkbar{margin-top:12px;font-size:.9rem;color:#555}
+.success{border-left:4px solid var(--teal);padding:10px 12px;background:#f5fffb;font-size:1.05rem}
+.warn{border-left:4px solid var(--garnet);padding:10px 12px;background:#fff7f7;font-size:1.05rem}
+.info{border-left:4px solid var(--blue);padding:8px 10px;background:#f5f9ff}
+svg{max-width:100%;height:auto;display:block}
+.cards{display:flex;flex-wrap:wrap;gap:8px}
+.card{border:1px solid var(--line);border-radius:10px;padding:10px;background:white;min-width:140px}
+.card.current{border-color:var(--gold);border-width:2px;background:#fffbe6}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:600;margin-left:4px}
+.tag.abel{background:#d8f1e1;color:var(--teal)}
+.tag.nonabel{background:#f4d5d5;color:var(--garnet)}
+.stepbtn{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap}
+</style>
+</head><body>
+<header><h1>Suite dérivée animée</h1><p>Visualiser la résolubilité par itération du sous-groupe dérivé D(G).</p></header>
+<main>
+<section class="panel">
+  <div class="controls">
+    <div class="control"><label for="group">Groupe</label>
+      <select id="group">
+        <option value="S3">S₃ — symétrique 3 éléments</option>
+        <option value="S4">S₄ — symétrique 4 éléments</option>
+        <option value="S5">S₅ — symétrique 5 éléments (obstacle)</option>
+        <option value="A4">A₄ — alterné 4 éléments</option>
+        <option value="A5">A₅ — alterné 5 éléments (simple non abélien)</option>
+        <option value="D4">D₄ — diédral d'ordre 8</option>
+        <option value="Q8">Q₈ — quaternions</option>
+        <option value="D5">D₅ — diédral d'ordre 10</option>
+      </select>
+    </div>
+    <div class="stepbtn">
+      <button id="reset" class="secondary">Réinitialiser</button>
+      <button id="next">Étape suivante</button>
+      <button id="all" class="secondary">Tout dérouler</button>
+    </div>
+  </div>
+  <div id="verdict" class="result"></div>
+</section>
+<section class="panel">
+  <h2>Chaîne des dérivés D⁰(G) ⊇ D¹(G) ⊇ ⋯</h2>
+  <svg id="chain" viewBox="0 0 940 180"></svg>
+  <div id="steps" class="cards" style="margin-top:12px"></div>
+</section>
+<section class="panel">
+  <h2>Pourquoi ?</h2>
+  <div id="explain" class="info"></div>
+</section>
+<div class="linkbar">Applet statique HTML/JS pur. Déployable tel quel sur GitHub Pages.</div>
+</main>
+<script>
+// Données : chaque groupe G avec sa suite derivée complète
+// abel: true si abélien, simpleNonAbel: true si simple non abélien
+// expl: phrase courte expliquant pourquoi D(G) = ce qu'il vaut
+const data = {
+  S3: {
+    chain: [
+      {name:"S₃",  ord:6, abel:false, expl:"S₃ contient des transpositions et des 3-cycles. Le commutateur de deux transpositions distinctes est un 3-cycle, donc D(S₃) contient A₃. Inversement, S₃/A₃ ≃ ℤ/2ℤ est abélien, donc D(S₃) ⊂ A₃."},
+      {name:"A₃",  ord:3, abel:true,  expl:"A₃ est cyclique d'ordre 3, donc abélien. Le groupe dérivé d'un groupe abélien est trivial."},
+      {name:"{e}", ord:1, abel:true,  expl:"On a atteint le groupe trivial."}
+    ],
+    solvable:true,
+    summary:"S₃ est résoluble : D²(S₃) = {e}."
+  },
+  S4: {
+    chain: [
+      {name:"S₄",  ord:24, abel:false, expl:"S₄/A₄ ≃ ℤ/2ℤ abélien, donc D(S₄) ⊂ A₄. On montre que D(S₄) = A₄ en exhibant des commutateurs (par exemple (1 2)(1 3)(1 2)(1 3) = (1 3 2))."},
+      {name:"A₄",  ord:12, abel:false, expl:"A₄ contient les 3-cycles et le groupe de Klein V₄. Le quotient A₄/V₄ ≃ ℤ/3ℤ est abélien, donc D(A₄) ⊂ V₄. On vérifie que les commutateurs de 3-cycles engendrent V₄."},
+      {name:"V₄",  ord:4,  abel:true,  expl:"V₄ = {e, (1 2)(3 4), (1 3)(2 4), (1 4)(2 3)} est isomorphe à (ℤ/2ℤ)². Abélien."},
+      {name:"{e}", ord:1,  abel:true,  expl:"Le dérivé d'un groupe abélien est trivial."}
+    ],
+    solvable:true,
+    summary:"S₄ est résoluble : D³(S₄) = {e}. C'est pourquoi les équations de degré ≤ 4 admettent une formule par radicaux."
+  },
+  S5: {
+    chain: [
+      {name:"S₅",   ord:120, abel:false, expl:"S₅/A₅ ≃ ℤ/2ℤ abélien, donc D(S₅) ⊂ A₅. Les commutateurs (1 2 3) = [(1 2),(1 3)] sont dans D(S₅), donc D(S₅) contient un 3-cycle, donc tout A₅ (car A₅ est simple et engendré par les 3-cycles)."},
+      {name:"A₅",   ord:60,  abel:false, simpleNonAbel:true, expl:"A₅ est SIMPLE et NON ABÉLIEN : il n'a aucun sous-groupe distingué autre que {e} et lui-même. Le sous-groupe dérivé D(A₅) est distingué dans A₅, et A₅ n'est pas abélien donc D(A₅) ≠ {e}. Donc D(A₅) = A₅."},
+      {name:"A₅",   ord:60,  abel:false, simpleNonAbel:true, expl:"D(A₅) = A₅ : la suite dérivée se stabilise sur A₅ sans jamais atteindre {e}.", terminal:true}
+    ],
+    solvable:false,
+    summary:"S₅ n'est PAS résoluble : la suite dérivée se stabilise sur A₅. Conséquence : les équations générales de degré ≥ 5 n'admettent pas de formule par radicaux (Abel-Ruffini)."
+  },
+  A4: {
+    chain: [
+      {name:"A₄",  ord:12, abel:false, expl:"A₄ contient les 3-cycles et V₄. A₄/V₄ ≃ ℤ/3ℤ est abélien, donc D(A₄) ⊂ V₄. On vérifie l'égalité."},
+      {name:"V₄",  ord:4,  abel:true,  expl:"V₄ ≃ (ℤ/2ℤ)² abélien."},
+      {name:"{e}", ord:1,  abel:true,  expl:"Trivial."}
+    ],
+    solvable:true,
+    summary:"A₄ est résoluble : D²(A₄) = {e}."
+  },
+  A5: {
+    chain: [
+      {name:"A₅",  ord:60, abel:false, simpleNonAbel:true, expl:"A₅ est simple non abélien. Son sous-groupe dérivé est distingué, donc égal à {e} ou A₅. Comme A₅ est non abélien, D(A₅) ≠ {e}, donc D(A₅) = A₅."},
+      {name:"A₅",  ord:60, abel:false, simpleNonAbel:true, expl:"La suite se stabilise sur A₅.", terminal:true}
+    ],
+    solvable:false,
+    summary:"A₅ n'est PAS résoluble. C'est le PLUS PETIT exemple de groupe simple non abélien, et le prototype de l'obstruction à la résolubilité."
+  },
+  D4: {
+    chain: [
+      {name:"D₄",   ord:8, abel:false, expl:"D₄ = ⟨r, s | r⁴ = s² = e, srs = r⁻¹⟩ a pour quotient abélien D₄/⟨r²⟩ ≃ V₄. Donc D(D₄) ⊂ ⟨r²⟩. Le commutateur [r,s] = r·s·r⁻¹·s⁻¹ = r² appartient à D(D₄), d'où D(D₄) = ⟨r²⟩."},
+      {name:"⟨r²⟩", ord:2, abel:true,  expl:"⟨r²⟩ = {e, r²} est cyclique d'ordre 2, abélien."},
+      {name:"{e}",  ord:1, abel:true,  expl:"Trivial."}
+    ],
+    solvable:true,
+    summary:"D₄ est résoluble : D²(D₄) = {e}."
+  },
+  Q8: {
+    chain: [
+      {name:"Q₈",     ord:8, abel:false, expl:"Q₈ = {±1, ±i, ±j, ±k} a pour centre Z(Q₈) = {±1}. Le quotient Q₈/{±1} ≃ V₄ est abélien, donc D(Q₈) ⊂ {±1}. Comme Q₈ est non abélien, D(Q₈) ≠ {e}, donc D(Q₈) = {±1}."},
+      {name:"{±1}",   ord:2, abel:true,  expl:"{±1} est cyclique d'ordre 2."},
+      {name:"{e}",    ord:1, abel:true,  expl:"Trivial."}
+    ],
+    solvable:true,
+    summary:"Q₈ est résoluble : D²(Q₈) = {e}."
+  },
+  D5: {
+    chain: [
+      {name:"D₅",   ord:10, abel:false, expl:"D₅ = ⟨r, s | r⁵ = s² = e, srs = r⁻¹⟩. Le commutateur [r,s] = r² engendre ⟨r⟩ (ordre 5 premier). Le quotient D₅/⟨r⟩ ≃ ℤ/2ℤ abélien, donc D(D₅) = ⟨r⟩."},
+      {name:"⟨r⟩",  ord:5,  abel:true,  expl:"⟨r⟩ est cyclique d'ordre 5, abélien."},
+      {name:"{e}",  ord:1,  abel:true,  expl:"Trivial."}
+    ],
+    solvable:true,
+    summary:"D₅ est résoluble. Plus généralement, tous les groupes diédraux D_n sont résolubles."
+  }
+};
+
+const $=id=>document.getElementById(id);
+let currentStep=0;
+
+function drawChain(g, upTo){
+  let arr=data[g].chain;
+  let n=Math.min(arr.length, upTo+1);
+  let totalW=940;
+  let spacing=Math.min(180, (totalW-100)/Math.max(1,arr.length-1));
+  let y=90;
+  let out='<defs><marker id="m" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#8a1d2c"/></marker></defs>';
+  for(let i=0;i<n;i++){
+    let item=arr[i];
+    let x=70+i*spacing;
+    let isCurrent=(i===upTo);
+    let isTerminal=item.terminal;
+    let isLast=(i===arr.length-1);
+    // arrête : si terminal, on dessine une "boucle" (D(G)=G)
+    let bgFill='#e8f4f2';
+    if(isTerminal)bgFill='#f4d5d5';
+    else if(item.simpleNonAbel)bgFill='#fff3cc';
+    let strokeW=isCurrent?4:2;
+    let strokeCol=isCurrent?'#c79b2b':'#0f5b55';
+    out+=`<circle cx="${x}" cy="${y}" r="42" fill="${bgFill}" stroke="${strokeCol}" stroke-width="${strokeW}"/>`;
+    out+=`<text x="${x}" y="${y-3}" text-anchor="middle" font-size="20" font-weight="700">${item.name}</text>`;
+    out+=`<text x="${x}" y="${y+18}" text-anchor="middle" font-size="12" fill="#666">ordre ${item.ord}</text>`;
+    // indicateur abélien/non
+    if(item.abel){
+      out+=`<text x="${x}" y="${y+55}" text-anchor="middle" font-size="11" fill="#0f5b55" font-weight="600">abélien</text>`;
+    }else if(item.simpleNonAbel){
+      out+=`<text x="${x}" y="${y+55}" text-anchor="middle" font-size="11" fill="#8a1d2c" font-weight="600">simple non abélien</text>`;
+    }else{
+      out+=`<text x="${x}" y="${y+55}" text-anchor="middle" font-size="11" fill="#8a1d2c">non abélien</text>`;
+    }
+    // flèche vers le suivant
+    if(i<n-1){
+      let xNext=70+(i+1)*spacing;
+      if(arr[i+1].terminal&&arr[i+1].name===item.name){
+        // boucle (stabilisation)
+        out+=`<path d="M ${x+38} ${y-25} Q ${(x+xNext)/2} ${y-65} ${xNext-38} ${y-25}" stroke="#8a1d2c" stroke-width="2.5" fill="none" marker-end="url(#m)"/>`;
+        out+=`<text x="${(x+xNext)/2}" y="${y-50}" text-anchor="middle" font-size="11" fill="#8a1d2c" font-weight="600">D</text>`;
+      }else{
+        out+=`<line x1="${x+45}" y1="${y}" x2="${xNext-45}" y2="${y}" stroke="#0f5b55" stroke-width="2.5" marker-end="url(#m)"/>`;
+        out+=`<text x="${(x+xNext)/2}" y="${y-8}" text-anchor="middle" font-size="13" fill="#0f5b55" font-weight="600">D</text>`;
+      }
+    }
+  }
+  // ajuster la viewBox horizontalement
+  let svg=$('chain');
+  let w=Math.max(940, 70+arr.length*spacing+50);
+  svg.setAttribute('viewBox',`0 0 ${w} 180`);
+  svg.innerHTML=out;
+}
+
+function render(){
+  let g=$('group').value;
+  let d=data[g];
+  let arr=d.chain;
+  let step=Math.min(currentStep, arr.length-1);
+  drawChain(g, step);
+
+  // cartes pour chaque étape révélée
+  let cardsHTML='';
+  for(let i=0;i<=step;i++){
+    let item=arr[i];
+    let current=(i===step)?' current':'';
+    let tag=item.abel?'<span class="tag abel">abélien</span>':
+             item.simpleNonAbel?'<span class="tag nonabel">simple non abélien</span>':
+             '<span class="tag nonabel">non abélien</span>';
+    cardsHTML+=`<div class="card${current}">D<sup>${i}</sup>(${g}) = <b>${item.name}</b> ${tag}<br><span class="small">ordre ${item.ord}</span></div>`;
+  }
+  $('steps').innerHTML=cardsHTML;
+
+  // verdict (seulement quand on est arrivé au bout)
+  if(step===arr.length-1){
+    $('verdict').innerHTML=d.solvable
+      ?`<div class="success">${d.summary}</div>`
+      :`<div class="warn">${d.summary}</div>`;
+  }else{
+    $('verdict').innerHTML=`<div class="info">Étape ${step}/${arr.length-1}. Cliquer sur « Étape suivante » pour calculer D(${arr[step].name}).</div>`;
+  }
+
+  // explication de l'étape courante
+  $('explain').innerHTML=`<b>D<sup>${step}</sup>(${g}) = ${arr[step].name}</b>. ${arr[step].expl}`;
+
+  // boutons
+  $('next').disabled=(step===arr.length-1);
+}
+
+$('group').onchange=()=>{currentStep=0;render()};
+$('reset').onclick=()=>{currentStep=0;render()};
+$('next').onclick=()=>{
+  let arr=data[$('group').value].chain;
+  currentStep=Math.min(arr.length-1, currentStep+1);
+  render();
+};
+$('all').onclick=()=>{
+  currentStep=data[$('group').value].chain.length-1;
+  render();
+};
+render();
+</script>
+</body></html>
