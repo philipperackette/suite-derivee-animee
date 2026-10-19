@@ -14,6 +14,8 @@ main{padding:20px;max-width:1180px;margin:0 auto}
 .control{display:flex;flex-direction:column;gap:4px}
 label{font-weight:600;font-size:.92rem}
 input,select,button{font:inherit;border:1px solid #bbb;border-radius:8px;padding:7px 9px;background:white}
+.control{min-width:0;max-width:100%}
+select{max-width:100%}
 button{background:var(--teal);color:white;border-color:var(--teal);cursor:pointer}
 button.secondary{background:white;color:var(--teal)}
 button:disabled{opacity:.5;cursor:not-allowed}
@@ -86,7 +88,7 @@ const data = {
   },
   S4: {
     chain: [
-      {name:"S₄",  ord:24, abel:false, expl:"S₄/A₄ ≃ ℤ/2ℤ abélien, donc D(S₄) ⊂ A₄. On montre que D(S₄) = A₄ en exhibant des commutateurs (par exemple (1 2)(1 3)(1 2)(1 3) = (1 3 2))."},
+      {name:"S₄",  ord:24, abel:false, expl:"S₄/A₄ ≃ ℤ/2ℤ abélien, donc D(S₄) ⊂ A₄. On montre que D(S₄) = A₄ en exhibant des commutateurs (par exemple (1 2)(1 3)(1 2)(1 3) = (1 2 3), en composant de droite à gauche)."},
       {name:"A₄",  ord:12, abel:false, expl:"A₄ contient les 3-cycles et le groupe de Klein V₄. Le quotient A₄/V₄ ≃ ℤ/3ℤ est abélien, donc D(A₄) ⊂ V₄. On vérifie que les commutateurs de 3-cycles engendrent V₄."},
       {name:"V₄",  ord:4,  abel:true,  expl:"V₄ = {e, (1 2)(3 4), (1 3)(2 4), (1 4)(2 3)} est isomorphe à (ℤ/2ℤ)². Abélien."},
       {name:"{e}", ord:1,  abel:true,  expl:"Le dérivé d'un groupe abélien est trivial."}
@@ -164,7 +166,6 @@ function drawChain(g, upTo){
     let x=70+i*spacing;
     let isCurrent=(i===upTo);
     let isTerminal=item.terminal;
-    let isLast=(i===arr.length-1);
     // arrête : si terminal, on dessine une "boucle" (D(G)=G)
     let bgFill='#e8f4f2';
     if(isTerminal)bgFill='#f4d5d5';
